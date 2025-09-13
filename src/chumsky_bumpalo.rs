@@ -1,27 +1,45 @@
 use crate::io::Output;
+use bumpalo::{Bump, collections::String as BString};
 use chumsky::{container::Container, prelude::*};
+use ouroboros::self_referencing;
 
 #[inline(never)]
 pub fn parse(input: &str) -> Result<impl Output, ()> {
     parser().parse(input).into_result().map_err(|_| ())
 }
 
-struct CollectString(String);
+#[self_referencing]
+pub struct CollectString {
+    b: Bump,
+    #[borrows(b)]
+    #[covariant]
+    s: BString<'this>,
+}
 
-impl Default for CollectString {
+impl<'b> Default for CollectString {
     fn default() -> Self {
-        CollectString(String::new())
+        CollectStringBuilder {
+            b: Bump::new(),
+            s_builder: |b| BString::new_in(&b),
+        }
+        .build()
     }
 }
 
 impl Container<&str> for CollectString {
     fn push(&mut self, item: &str) {
-        self.0.push_str(item);
+        self.with_s_mut(|s| s.push_str(item));
+    }
+}
+
+impl Output for CollectString {
+    fn as_str(&self) -> &str {
+        self.with_s(|s| s.as_str())
     }
 }
 
 #[inline]
-fn parser<'src>() -> impl Parser<'src, &'src str, String, extra::Default> {
+fn parser<'src>() -> impl Parser<'src, &'src str, CollectString, extra::Default> {
     let escape_character = just('\\')
         .ignore_then(choice((
             just('\\').to("\\"),  // 反斜杠
@@ -42,8 +60,7 @@ fn parser<'src>() -> impl Parser<'src, &'src str, String, extra::Default> {
 
     raw.or(escape_character)
         .repeated()
-        .collect()
-        .map(|CollectString(s)| s)
+        .collect::<CollectString>()
 }
 
 #[test]

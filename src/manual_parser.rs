@@ -1,5 +1,7 @@
+use crate::io::Output;
+
 #[inline(never)]
-pub fn parse(input: &str) -> Result<String, ()> {
+pub fn parse(input: &str) -> Result<impl Output, ()> {
     let mut last_is_escape = false;
     input
         .chars()
@@ -36,5 +38,5 @@ pub fn parse(input: &str) -> Result<String, ()> {
 #[test]
 fn test_parse() {
     let s = parse(r#"hello\\\n\tniho\r\"\'\0\bxl\a\n123\b2"#).unwrap();
-    println!("{}", s);
+    println!("{}", s.as_str());
 }

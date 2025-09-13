@@ -1,7 +1,8 @@
+use crate::io::Output;
 use chumsky::prelude::*;
 
 #[inline(never)]
-pub fn parse(input: &str) -> Result<String, ()> {
+pub fn parse(input: &str) -> Result<impl Output, ()> {
     parser().parse(input).into_result().map_err(|_| ())
 }
 
@@ -27,5 +28,5 @@ fn parser<'src>() -> impl Parser<'src, &'src str, String, extra::Default> {
 #[test]
 fn test_parse() {
     let s = parse(r#"hello\\\n\tniho\r\"\'\0\bxl\a\n123\b2"#).unwrap();
-    println!("{}", s);
+    println!("{}", s.as_str());
 }

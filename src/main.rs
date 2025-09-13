@@ -1,6 +1,9 @@
 mod chumsky_basic;
+mod chumsky_bumpalo;
 mod chumsky_optimized;
+mod io;
 mod manual_parser;
+use crate::io::Output;
 
 fn generate_input(len: usize) -> String {
     // 使用简单的线性同余生成器作为伪随机数生成器
@@ -111,42 +114,56 @@ fn benchmark_algorithms() {
         let result_chumsky_optimized = chumsky_optimized::parse(&input);
         let time_chumsky_optimized = start.elapsed();
 
+        // 测试 chumsky_bumpalo 实现
+        let start = std::time::Instant::now();
+        let result_chumsky_bumpalo = chumsky_bumpalo::parse(&input);
+        let time_chumsky_bumpalo = start.elapsed();
+
         // 比较结果
         match (
             result_chumsky_basic,
             result_manual_parser,
             result_chumsky_optimized,
+            result_chumsky_bumpalo,
         ) {
-            (Ok(res1), Ok(res2), Ok(res3)) => {
-                if res1 == res2 && res2 == res3 {
-                    println!("✓ 三种实现结果一致");
-                    println!("  chumsky_basic 实现耗时:     {:?}", time_chumsky_basic);
-                    println!("  chumsky_optimized 实现耗时: {:?}", time_chumsky_optimized);
-                    println!("  manual_parser 实现耗时:     {:?}", time_manual_parser);
+            (Ok(res1), Ok(res2), Ok(res3), Ok(res4)) => {
+                let (s1, s2, s3, s4) = (res1.as_str(), res2.as_str(), res3.as_str(), res4.as_str());
+                if s1 == s2 && s2 == s3 && s3 == s4 {
+                    println!("✓ 四种实现结果一致");
+                    println!("  chumsky_basic     耗时: {:?}", time_chumsky_basic);
+                    println!("  chumsky_optimized 耗时: {:?}", time_chumsky_optimized);
+                    println!("  chumsky_bumpalo   耗时: {:?}", time_chumsky_bumpalo);
+                    println!("  manual_parser     耗时: {:?}", time_manual_parser);
 
                     let manual_nanos = time_manual_parser.as_nanos() as f64;
                     println!(
-                        "  速度比较: manual_parser 比 chumsky_basic 快 {:.2}x",
+                        "  速度: manual 比 basic      快 {:.2}x",
                         time_chumsky_basic.as_nanos() as f64 / manual_nanos
                     );
                     println!(
-                        "  速度比较: manual_parser 比 chumsky_optimized 快 {:.2}x",
+                        "  速度: manual 比 optimized  快 {:.2}x",
                         time_chumsky_optimized.as_nanos() as f64 / manual_nanos
+                    );
+                    println!(
+                        "  速度: manual 比 bumpalo    快 {:.2}x",
+                        time_chumsky_bumpalo.as_nanos() as f64 / manual_nanos
                     );
                 } else {
                     println!("✗ 结果不一致!");
-                    println!("  chumsky_basic 结果:     {:?}", res1);
-                    println!("  manual_parser 结果:     {:?}", res2);
-                    println!("  chumsky_optimized 结果: {:?}", res3);
+                    println!("  chumsky_basic   结果: {}", s1);
+                    println!("  manual_parser   结果: {}", s2);
+                    println!("  chumsky_opt     结果: {}", s3);
+                    println!("  chumsky_bumpalo 结果: {}", s4);
                 }
             }
-            (Err(_), Err(_), Err(_)) => {
-                println!("✓ 三种实现都返回错误（一致）");
-                println!("  chumsky_basic 实现耗时:     {:?}", time_chumsky_basic);
-                println!("  chumsky_optimized 实现耗时: {:?}", time_chumsky_optimized);
-                println!("  manual_parser 实现耗时:     {:?}", time_manual_parser);
+            (Err(_), Err(_), Err(_), Err(_)) => {
+                println!("✓ 四种实现都返回错误（一致）");
+                println!("  chumsky_basic     耗时: {:?}", time_chumsky_basic);
+                println!("  chumsky_optimized 耗时: {:?}", time_chumsky_optimized);
+                println!("  chumsky_bumpalo   耗时: {:?}", time_chumsky_bumpalo);
+                println!("  manual_parser     耗时: {:?}", time_manual_parser);
             }
-            (res1, res2, res3) => {
+            (res1, res2, res3, res4) => {
                 println!("✗ 实现结果不一致（成功/失败混合）");
                 println!(
                     "  chumsky_basic:     {}",
@@ -159,6 +176,10 @@ fn benchmark_algorithms() {
                 println!(
                     "  chumsky_optimized: {}",
                     if res3.is_ok() { "Ok" } else { "Err" }
+                );
+                println!(
+                    "  chumsky_bumpalo:   {}",
+                    if res4.is_ok() { "Ok" } else { "Err" }
                 );
             }
         }
